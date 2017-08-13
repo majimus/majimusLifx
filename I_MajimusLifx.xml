@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<implementation>
+    <functions>
+        function startupMajimusLifx(device)
+            luup.log("MajimusLifx Startup!")
+			lifx = require("L_MajimusLifx")
+			updateStats = nil
+			if lifx then
+				lifx.startUp()
+				updateStats = lifx.updateStats
+			else
+				luup.log("MajimusLifx not loaded")
+			end
+        end
+    </functions>
+    <startup>startupMajimusLifx</startup>
+    <actionList>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+            <name>SetTarget</name>
+            <run>
+                local newTargetValue = lul_settings.newTargetValue or "0"
+				if (newTargetValue == "1") then
+                    lifx.turnOn(lul_device)
+                else
+                    lifx.turnOff(lul_device)
+                end
+            </run>
+			<jobname>state-toggle</jobname>
+			<icon>OFF</icon>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+            <name>GetTarget</name>
+            <run>
+                luup.variable_get("urn:upnp-org:serviceId:SwitchPower1", "Target", lul_device)
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+            <name>GetStatus</name>
+            <run>
+                luup.variable_get("urn:upnp-org:serviceId:SwitchPower1", "Status", lul_device)
+            </run>
+        </action>
+		<action>
+			<serviceId>urn:upnp-org:serviceId:Dimming1</serviceId>
+			<name>SetLoadLevelTarget</name>
+			<run>
+				local newLoadlevelTarget = lul_settings.newLoadlevelTarget or "0"
+				lifx.setLoadLevelTarget(newLoadlevelTarget,lul_device)
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:upnp-org:serviceId:Dimming1</serviceId>
+			<name>GetLoadLevelTarget</name>
+			<run>
+				luup.variable_get("urn:upnp-org:serviceId:SwitchPower1", "LoadLevelTarget", lul_device)
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:micasaverde-com:serviceId:Color1</serviceId>
+			<name>SetColorRGB</name>
+			<run>
+				local newColorRGBTarget = lul_settings.newColorRGBTarget or "255,0,0"
+				luup.log("Majimus preColor")
+				lifx.setColorRGB(newColorRGBTarget,lul_device)
+			</run>
+		</action>
+    </actionList>
+</implementation>
