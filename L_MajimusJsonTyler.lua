@@ -42,6 +42,9 @@ This way you can check if a value is null with the conditional
 If you have control over the data and are using Lua, I would recommend just
 avoiding null values in your data to begin with.
 
+json lib from https://gist.github.com/tylerneylon/59f4bcf316be525b30ab changed
+the name to avoid conflicts and changed the module syntax.
+
 --]]
 module("L_MajimusJsonTyler", package.seeall) --making mods
 
