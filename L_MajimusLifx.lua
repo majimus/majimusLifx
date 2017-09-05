@@ -36,6 +36,7 @@ local json = require("L_MajimusJsonTyler")
 
 local SID = "urn:majimus-com:serviceId:Lifx"
 local BDID = "urn:schemas-majimus-com:device:LifxBulb:1"
+local SDID = "urn:schemas-majimus-com:device:LifxScene:1"
 local PDID = "urn:schemas-majimus-com:device:LifxParent:1"
 local SWITCH_SID  = "urn:upnp-org:serviceId:SwitchPower1"
 local DIMMER_SID  = "urn:upnp-org:serviceId:Dimming1"
@@ -43,10 +44,9 @@ local COLOR_SID  = "urn:micasaverde-com:serviceId:Color1"
 
 --vars for parent
 local g_appendPtr
-Device = nil
 
 --debug mode
-DEBUG = 1
+DEBUG = 9
 --update bulbs every 1 mins
 DELAY = 60
 
@@ -209,8 +209,16 @@ end
 function turnOn(lul_device)
 	log("TurnOn")
 	local sel = luup.variable_get(SID, "LightId", lul_device)
+	
+	--handle the scene
+	if(luup.devices[lul_device].device_type == SDID) then
+		log("Play Scene")
+		lifx_ctrl(sel, "scene", nil, nil, nil, nil)
+		return
+	end
+	
 	--lifx_ctrl(selector, mode, color, bright, cycles, period)
-	local stat = lifx_ctrl(sel, 'on', nil, nil, nil, nil)	
+	local stat = lifx_ctrl(sel, "on", nil, nil, nil, nil)	
 	-- do not update if we returned
 	if(stat == false) then
 		return
@@ -223,13 +231,20 @@ end
 
 function turnOff(lul_device)
 	log("TurnOff") 
-	local sel = luup.variable_get(SID, "LightId", lul_device)	
-	--lifx_ctrl(selector, mode, color, bright, cycles, period)
-	local stat = lifx_ctrl(sel, 'off', nil, nil, nil, nil)
-	-- do not update if we returned
-	if(stat == false) then
-		return
+	
+	if (luup.devices[lul_device].device_type == BDID) then
+		log("Turn off light")
+		local sel = luup.variable_get(SID, "LightId", lul_device)	
+		--lifx_ctrl(selector, mode, color, bright, cycles, period)
+		local stat = lifx_ctrl(sel, 'off', nil, nil, nil, nil)
+		-- do not update if we returned
+		if(stat == false) then
+			return
+		end
+	elseif (luup.devices[lul_device].device_type == SDID) then
+		log("Turn off a scene, nothing to do")
 	end
+	
 	luup.variable_set(SWITCH_SID, "Status", 0, lul_device)
 	luup.variable_set(DIMMER_SID,"LoadLevelStatus", 0, lul_device)
 end
@@ -394,6 +409,7 @@ function bootStrap(lul_device)
 	if(luup.devices[lul_device].device_type == PDID) then
 		startParent(lul_device)
 	else
-		startChild(lul_device)
+		--startChild(lul_device)
+		log("Child Device Startup")
 	end
 end

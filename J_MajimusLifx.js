@@ -81,6 +81,7 @@ var Lifx = (function (api) {
 	function ListLights() {
 		//add lights to a table with id,name and checkbox.
 		//show error with wrong key TODO.
+		jQuery('#light_list').html("");
 		var key = jQuery('#api_key').val();	    
 		jQuery.ajax({ 
              type: "GET",
@@ -132,7 +133,9 @@ var Lifx = (function (api) {
 			'</table>';
 			html += '<p><input type="button" value="List Devices" onClick="Lifx.ListLights()"/></p>';
 			html += '<p><form id="light_list"></form></p>';
-			html += '<input type="button" value="Add Selection" onClick="Lifx.SaveSelection()"/>';
+			html += '<input type="button" value="Sync Selection" onClick="Lifx.SaveSelection()"/>';
+			html += '<p>WARNING: unchecked devices will be removed</p>';
+			html += '<p>WARNING: if previously added!!</p>';
 			api.setCpanelContent(html);
 		} catch (e) {
             Utils.logError('Error in Lifx.ParentSettings(): ' + e);
