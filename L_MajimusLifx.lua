@@ -46,7 +46,7 @@ local COLOR_SID  = "urn:micasaverde-com:serviceId:Color1"
 local g_appendPtr
 
 --debug mode
-DEBUG = 9
+DEBUG = 1
 --update bulbs every 1 mins
 DELAY = 60
 
@@ -407,6 +407,13 @@ end
 function bootStrap(lul_device)
 	--have one implementation file and start parent of child from here
 	if(luup.devices[lul_device].device_type == PDID) then
+		--set debug levels
+		local dlevel = luup.variable_get(SID, "DEBUG", lul_device) or "1"
+		dlevel = tonumber(dlevel)
+		DEBUG = dlevel
+		if( dlevel == 1) then
+			luup.variable_set(SID, "DEBUG", dlevel,lul_device)
+		end
 		startParent(lul_device)
 	else
 		--startChild(lul_device)
