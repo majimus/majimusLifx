@@ -6,8 +6,8 @@
 			lifx = require("L_MajimusLifx")
 			updateStats = nil
 			if lifx then
-				lifx.startUp()
 				updateStats = lifx.updateStats
+				lifx.bootStrap(device)				
 			else
 				luup.log("MajimusLifx not loaded")
 			end

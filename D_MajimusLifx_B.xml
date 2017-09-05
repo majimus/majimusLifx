@@ -5,13 +5,13 @@
         <minor>0</minor>
     </specVersion>
     <device>
-        <deviceType>urn:schemas-majimus-com:device:Lifx:1</deviceType>
-        <staticJson>D_MajimusLifx.json</staticJson>
+        <deviceType>urn:schemas-majimus-com:device:LifxBulb:1</deviceType>
+        <staticJson>D_DimmableRGBOnlyLight1.json</staticJson>
         <serviceList>
           <service>
-            <serviceType>urn:schemas-majimus-com:service:Lifx:1</serviceType>
-            <serviceId>urn:majimus-com:serviceId:Lifx</serviceId>
-            <SCPDURL>S_MajimusLifx.xml</SCPDURL>
+            <serviceType>urn:schemas-majimus-com:service:LifxBulb:1</serviceType>
+            <serviceId>urn:majimus-com:serviceId:LifxBulb</serviceId>
+            <SCPDURL>S_MajimusLifx_B.xml</SCPDURL>
           </service>
           <service>
             <serviceType>urn:schemas-upnp-org:service:SwitchPower:1</serviceType>
