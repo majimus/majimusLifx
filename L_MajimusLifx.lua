@@ -34,11 +34,16 @@ ltn12 = require("ltn12")
 -- wrapped it in a module as well.
 local json = require("L_MajimusJsonTyler")  
 
-local DID = "urn:schemas-majimus-com:device:Lifx:1"
 local SID = "urn:majimus-com:serviceId:Lifx"
+local BDID = "urn:schemas-majimus-com:device:LifxBulb:1"
+local PDID = "urn:schemas-majimus-com:device:LifxParent:1"
 local SWITCH_SID  = "urn:upnp-org:serviceId:SwitchPower1"
 local DIMMER_SID  = "urn:upnp-org:serviceId:Dimming1"
 local COLOR_SID  = "urn:micasaverde-com:serviceId:Color1"
+
+--vars for parent
+local g_appendPtr
+Device = nil
 
 --debug mode
 DEBUG = 1
@@ -47,6 +52,11 @@ DELAY = 60
 
 --we should run the stats updater only once
 STATS_RUNNING = false
+
+TypeDeviceFileMap = {
+	[ "bulb" ] = "D_MajimusLifx_B.xml",
+	[ "scene" ] = "D_MajimusLifx_S.xml"
+}
 
 
 local function log(textParm, level)
@@ -69,7 +79,9 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 	local payload = ''
 	local selmethod, selurl, key, value, stat, power, connected, err
 	local token = luup.variable_get(SID, "ApiKey", luup.device) 
-
+	
+	log("Token "..token,2)
+	
 	-- Default values
 	color = color or "rgb:0,255,0" -- if color nil or false then use green at brightest
 	bright = bright or 1.0  -- if bright nil or false then use 1.0
@@ -82,7 +94,7 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 		log("Entry Selector: nil")
 	end
 	
-	selector = selector or luup.variable_get(SID, "LightId", luup.device)
+	selector = selector or luup.variable_get(SID, "LightId", luup.device) or ""
 	
 	log("Final Selector:"..selector)
 		
@@ -188,41 +200,43 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 end
 
 
-local function getLoadLevel()
-	level = luup.variable_get(DIMMER_SID, "LoadLevelTarget", luup.device)
+local function getLoadLevel(lul_device)
+	level = luup.variable_get(DIMMER_SID, "LoadLevelTarget", lul_device)
 	return level
 end
 
 
-function turnOn()
-	log("TurnOn")	
+function turnOn(lul_device)
+	log("TurnOn")
+	local sel = luup.variable_get(SID, "LightId", lul_device)
 	--lifx_ctrl(selector, mode, color, bright, cycles, period)
-	local stat = lifx_ctrl(nil, 'on', nil, nil, nil, nil)	
+	local stat = lifx_ctrl(sel, 'on', nil, nil, nil, nil)	
 	-- do not update if we returned
 	if(stat == false) then
 		return
 	end
-	luup.variable_set(SWITCH_SID,"Status", 1, luup.device)
+	luup.variable_set(SWITCH_SID,"Status", 1, lul_device)
 	--get Target Level
-	loadLevel = getLoadLevel()
-    luup.variable_set(DIMMER_SID,"LoadLevelStatus", loadLevel, luup.device)	
+	loadLevel = getLoadLevel(lul_device)
+    luup.variable_set(DIMMER_SID,"LoadLevelStatus", loadLevel, lul_device)	
 end
 
-function turnOff()
-	log("TurnOff")  
+function turnOff(lul_device)
+	log("TurnOff") 
+	local sel = luup.variable_get(SID, "LightId", lul_device)	
 	--lifx_ctrl(selector, mode, color, bright, cycles, period)
-	local stat = lifx_ctrl(nil, 'off', nil, nil, nil, nil)
+	local stat = lifx_ctrl(sel, 'off', nil, nil, nil, nil)
 	-- do not update if we returned
 	if(stat == false) then
 		return
 	end
-	luup.variable_set(SWITCH_SID, "Status", 0, luup.device)
-	luup.variable_set(DIMMER_SID,"LoadLevelStatus", 0, luup.device)
+	luup.variable_set(SWITCH_SID, "Status", 0, lul_device)
+	luup.variable_set(DIMMER_SID,"LoadLevelStatus", 0, lul_device)
 end
 
 function setLoadLevelTarget(target,lul_device)
 	log("SetLoadLevel:" .. target)
-	
+	local sel = luup.variable_get(SID, "LightId", lul_device)
 	--set target to range 0.0 - 1.0
 	target_scaled = (target / 100.0) * 1.0	
 	
@@ -230,19 +244,19 @@ function setLoadLevelTarget(target,lul_device)
 	if (target ~= "0") then
 		--lifx_ctrl(selector, mode, color, bright, cycles, period)
 		log("SetLoadLevel Scaled:" .. target)
-		stat = lifx_ctrl(nil, 'brightness', nil, target_scaled, nil, nil)
+		stat = lifx_ctrl(sel, 'brightness', nil, target_scaled, nil, nil)
 		
 		-- do not update if we returned
 		if(stat == false) then
 			return
 		end
-		luup.variable_set(DIMMER_SID, "LoadLevelTarget", target, luup.device)
+		luup.variable_set(DIMMER_SID, "LoadLevelTarget", target, lul_device)
 	
 		-- Turn on lights now, will come on at set target	
-		turnOn()
+		turnOn(lul_device)
 	else
 		--turn off we have zero target
-		turnOff()
+		turnOff(lul_device)
 	end	
 
 end
@@ -251,8 +265,9 @@ end
 function setColorRGB(RGBTarget,lul_device)
 	--lifx_ctrl(selector, mode, color, bright, cycles, period)
 	target = 'rgb:'..RGBTarget
+	local sel = luup.variable_get(SID, "LightId", lul_device)
 	log("SetColorRGB: " ..target)
-	lifx_ctrl(nil, 'color', target, nil, nil, nil)
+	lifx_ctrl(sel, 'color', target, nil, nil, nil)
 end
 
 --call delay function to update lights 
@@ -264,7 +279,7 @@ end
 function updateStats()
 	log("Updating stats")
 	for k, v in pairs(luup.devices) do
-		if (v and v.device_type == DID and k == luup.device) then
+		if (v and v.device_type == BDID) then
 			log("UpdateStats Dev#:"..k)
 			id=luup.variable_get(SID, "LightId", k)
 			power, bright = lifx_ctrl(id, 'list', nil, nil, nil, nil)
@@ -290,18 +305,95 @@ function updateStats()
 	end
 	--call it again after a while
 	math.randomseed(os.time())
-	variance  =  math.random(5,60)
+	variance  =  math.random(1,5)
 	log("Stats Variance:"..variance)
 	luup.call_delay("updateStats",DELAY+variance)
 end
 
+function setChildData(count,data)
+	luup.variable_set(SID, "ChildCount", count, Device)
+	luup.variable_set(SID, "ChildData", data, Device)
+end
 
-function startUp()
-	--run stats only once
+local function createChildDevices()
+	local childCount = luup.variable_get(SID, "ChildCount", Device)
+	local childData = luup.variable_get(SID, "ChildData", Device)
+	if (childCount == nil) then
+		luup.variable_set(SID, "ChildCount", "0", Device)
+		childCount = 0		
+	else
+		childCount = tonumber(childCount)
+	end
+	
+	if (childCount == 0) then
+		log("ChildCount 0 -> Return", 2)
+		luup.variable_set(SID, "ChildData", "", Device)
+		return
+	end
+	
+	log("Creating up to " .. childCount .. " children", 2)	
+	log("ChildData " .. childData, 2)
+	local children = g_appendPtr
+	local cnt = 0
+	local childId = ""
+	local childApiKey = ""
+	local childType = ""
+	local childName = ""
+	local ApiKey = luup.variable_get(SID,"ApiKey", Device)
+	for i in string.gmatch(childData, "[^,]*") do
+	    local size = string.len(i)
+		log(size.." MatchState "..i,2)		
+		if (cnt == 2 and size>0) then			
+			childType = i
+			if (childId and childId ~= "") then
+				local childParameters = ""
+				childParameters = childParameters .. SID .. ",LightId=" .. childId
+				childParameters = childParameters .."\n" ..SID .. ",ApiKey=" .. ApiKey
+				local childDeviceFile = TypeDeviceFileMap[childType]
+				log("Creating child state#" ..cnt.. "Params:" .. childParameters,1)
+				luup.chdev.append(Device, children, childId, childName, "", childDeviceFile, "I_MajimusLifx.xml", childParameters, false)
+			end
+			cnt = 0
+		elseif (cnt == 1 and size>0) then
+			cnt = cnt + 1
+			childName = i
+			log("Creating child state#" ..cnt.."Name "..childName,2)
+		elseif(size>0) then 
+			childId = i
+			log("Creating child state#" ..cnt.."Id "..childId,2)
+			cnt = cnt + 1
+		end
+	end
+	--we have added all the children so reset the child info
+	--setChildData("0","")
+end	
+
+function startParent(lul_device)
+	log("Parent Starting!:"..lul_device)
+	
+	--make some children
+	g_appendPtr = luup.chdev.start(lul_device)
+	createChildDevices()
+	luup.chdev.sync(Device, g_appendPtr)
+	
+    --run the updater
 	if (STATS_RUNNING == false) then
 		STATS_RUNNING = true
 		updateStats()
 	else
 		log("Stats already started!")
+	end	
+end
+
+function startChild(lul_device)
+	log("child Starting!:"..lul_device)
+end
+
+function bootStrap(lul_device)
+	--have one implementation file and start parent of child from here
+	if(luup.devices[lul_device].device_type == PDID) then
+		startParent(lul_device)
+	else
+		startChild(lul_device)
 	end
 end
