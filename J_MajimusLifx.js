@@ -1,12 +1,27 @@
 var Lifx = (function (api) {
+	
 	var lifx_svs = 'urn:majimus-com:serviceId:Lifx';
-	var lifx_par = 'urn:majimus-com:serviceId:LifxParent';
+
+	
 	var myModule = {};
 	
 	var deviceID = api.getCpanelDeviceId();
 	
+	var curChild = {};
+	
+	function SetCurrent() {
+		var devices = api.getListOfDevices();
+		for (i=0; i<devices.length; i+=1) {
+				var devid = devices[i].id;
+				if(devices[i].id_parent == deviceID) {
+					var id = api.getDeviceState(devid, lifx_svs, 'LightId');
+					curChild[id] = "seen";
+				}			
+		}
+	}
+	
 	function onBeforeCpanelClose(args){
-        console.log('handler for before cpanel close');
+        //console.log('handler for before cpanel close');
     }
     
 	function init(){
@@ -50,7 +65,14 @@ var Lifx = (function (api) {
 	}
 	
 	function SceneToForm(id,name) {
-		var item = '<input type="checkbox" class="list" value="scene_id:'+id+','+name+',scene"/>'+name+'<br>';
+		var id = "scene_id:"+id;
+		var cstat = "";
+		
+		if(curChild[id]) {
+			cstat = 'checked=""';
+		}
+		
+		var item = '<input type="checkbox" class="list" value="'+id+','+name+',scene" '+cstat+'/>'+name+'<br>';
 		jQuery('#light_list').append(item);
 	}	
 	
@@ -74,13 +96,19 @@ var Lifx = (function (api) {
 	}
 	
     function LightToForm(id,name) {
-		var item = '<input type="checkbox" class="list" value="id:'+id+','+name+',bulb"/>'+name+'<br>';
+		var id = "id:"+id;
+		var cstat = "";
+		
+		if(curChild[id]) {
+			cstat = 'checked=""';
+		}
+		
+		var item = '<input type="checkbox" class="list" value="'+id+','+name+',bulb" '+cstat+'/>'+name+'<br>';
 		jQuery('#light_list').append(item);
 	}	
 	
 	function ListLights() {
-		//add lights to a table with id,name and checkbox.
-		//show error with wrong key TODO.
+		SetCurrent();
 		jQuery('#light_list').html("");
 		var key = jQuery('#api_key').val();	    
 		jQuery.ajax({ 
@@ -98,7 +126,7 @@ var Lifx = (function (api) {
 					LightToForm(obj.id,obj.label);
 				});
 		}});
-		ListScenes();
+		ListScenes();		
 	}
 	
 	function SaveSelection() {
