@@ -9,6 +9,8 @@ var Lifx = (function (api) {
 	
 	var curChild = {};
 	
+	var groupTemp = {};
+	
 	function SetCurrent() {
 		var devices = api.getListOfDevices();
 		for (i=0; i<devices.length; i+=1) {
@@ -89,14 +91,15 @@ var Lifx = (function (api) {
 			 },
 			 success: function(data){        
                 console.log(data);
+				jQuery('#light_list').append("<p></p><b>Scenes</b><br>");
 				jQuery.each(data,function(i,obj){
 					SceneToForm(obj.uuid,obj.name);
 				});
 		}});
 	}
 	
-    function LightToForm(id,name) {
-		var id = "id:"+id;
+    function LightToForm(id,name,pref) {
+		var id = pref+":"+id;
 		var cstat = "";
 		
 		if(curChild[id]) {
@@ -109,6 +112,7 @@ var Lifx = (function (api) {
 	
 	function ListLights() {
 		SetCurrent();
+		groupTemp = {};
 		jQuery('#light_list').html("");
 		var key = jQuery('#api_key').val();	    
 		jQuery.ajax({ 
@@ -122,11 +126,20 @@ var Lifx = (function (api) {
 			 },
 			 success: function(data){        
                 console.log(data);
+				jQuery('#light_list').append("<p></p><b>Lights</b><br>");
 				jQuery.each(data,function(i,obj){
-					LightToForm(obj.id,obj.label);
+					LightToForm(obj.id,obj.label,"id");
 				});
+				jQuery('#light_list').append("<p></p><b>Groups</b><br>");
+				jQuery.each(data,function(i,obj){					
+					if(!groupTemp[obj.group.id]) {
+						LightToForm(obj.group.id,obj.group.name,"group_id");
+						groupTemp[obj.group.id] = "set";
+					}
+				});
+			ListScenes();
 		}});
-		ListScenes();		
+		
 	}
 	
 	function SaveSelection() {
@@ -159,11 +172,11 @@ var Lifx = (function (api) {
 			var html =  '<table>' +
 			'<tr><td>API Key</td><td><input  type="text" id="api_key" size=20 value="' + key + '" onchange="Lifx.api_key_set_par(this.value);"></td></tr>' +
 			'</table>';
-			html += '<p><input type="button" value="List Devices" onClick="Lifx.ListLights()"/></p>';
+			html += '<p></p><p><input type="button" value="List Devices" onClick="Lifx.ListLights()"/></p>';
 			html += '<p><form id="light_list"></form></p>';
 			html += '<input type="button" value="Sync Selection" onClick="Lifx.SaveSelection()"/>';
-			html += '<p>WARNING: unchecked devices will be removed</p>';
-			html += '<p>WARNING: if previously added!!</p>';
+			html += '<p><b>WARNING: unchecked devices will be removed</b></p>';
+			html += '<p><b>WARNING: if previously added!!</b></p>';
 			api.setCpanelContent(html);
 		} catch (e) {
             Utils.logError('Error in Lifx.ParentSettings(): ' + e);
