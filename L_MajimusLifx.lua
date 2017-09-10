@@ -24,7 +24,7 @@ More functionality and refinement will be added with time.
 module("L_MajimusLifx", package.seeall)
 
 -- Module Version
-PLUGIN_VERSION = '0.1'
+PLUGIN_VERSION = '0.2'
 
 https = require("ssl.https")
 ltn12 = require("ltn12")
