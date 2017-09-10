@@ -135,7 +135,7 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 	elseif mode == "scene" then
 		selmethod = "PUT"
 		selurl = "https://api.lifx.com/v1/scenes/" .. selector .. "/activate"
-		payload = ''
+		payload = '{"duration": "' .. period .. '"}'
 	else
 		log("Unknown Command!")
 		return false
@@ -213,7 +213,8 @@ function turnOn(lul_device)
 	--handle the scene
 	if(luup.devices[lul_device].device_type == SDID) then
 		log("Play Scene")
-		lifx_ctrl(sel, "scene", nil, nil, nil, nil)
+		delay = luup.variable_get(SID, "SceneDelay", lul_device) or "0"
+		lifx_ctrl(sel, "scene", nil, nil, nil, delay)
 		return
 	end
 	
@@ -365,6 +366,9 @@ local function createChildDevices()
 				childParameters = childParameters .. SID .. ",LightId=" .. childId
 				childParameters = childParameters .."\n" ..SID .. ",ApiKey=" .. ApiKey
 				local childDeviceFile = TypeDeviceFileMap[childType]
+				if (childType == "scene") then
+					childParameters = childParameters .."\n" ..SID .. ",SceneDelay=0"
+				end
 				log("Creating child state#" ..cnt.. "Params:" .. childParameters,1)
 				luup.chdev.append(Device, children, childId, childName, "", childDeviceFile, "I_MajimusLifx.xml", childParameters, false)
 			end
