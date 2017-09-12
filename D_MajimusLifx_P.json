@@ -42,13 +42,12 @@
             ],
             "Control": [
                 {
-				   "ControlGroup":"1",
 				   "ControlType":"label",
 				   "top":"0",
 				   "left":"0",
 				   "Label":{
 					  "lang_tag":"lixfParent_mesg",
-					  "text":"Please enter lifx api key in the configure section"
+					  "text":"Please enter the lifx api key in the settings section"
 				   },
 				   "Display":{
 					  "Top": 80,
