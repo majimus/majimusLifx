@@ -78,7 +78,7 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 	local resp = {}
 	local payload = ''
 	local selmethod, selurl, key, value, stat, power, connected, err
-	local token = luup.variable_get(SID, "ApiKey", luup.device) 
+	local token = luup.variable_get(SID, "ApiKey", luup.device) or "0"
 	
 	log("Token "..token,2)
 	
