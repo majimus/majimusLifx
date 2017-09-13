@@ -398,7 +398,7 @@ function startParent(lul_device)
     --run the updater
 	if (STATS_RUNNING == false) then
 		STATS_RUNNING = true
-		updateStats()
+		luup.call_delay("updateStats",1)
 	else
 		log("Stats already started!")
 	end	
@@ -412,7 +412,7 @@ function bootStrap(lul_device)
 	--have one implementation file and start parent of child from here
 	if(luup.devices[lul_device].device_type == PDID) then
 		--set debug levels
-		local dlevel = luup.variable_get(SID, "DEBUG", lul_device) or "1"
+		local dlevel = luup.variable_get(SID, "DEBUG", lul_device) or "0"
 		dlevel = tonumber(dlevel)
 		DEBUG = dlevel
 		if( dlevel == 1) then
