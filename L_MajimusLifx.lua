@@ -46,9 +46,9 @@ local COLOR_SID  = "urn:micasaverde-com:serviceId:Color1"
 local g_appendPtr
 
 --debug mode
-DEBUG = 1
---update bulbs every 1 mins
-DELAY = 60
+DEBUG = 0
+--update bulbs every 2 mins
+DELAY = 120
 
 --we should run the stats updater only once
 STATS_RUNNING = false
@@ -92,6 +92,9 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 		log("Entry Selector:"..selector)
 	else
 		log("Entry Selector: nil")
+		if mode == "list" then
+			selector = "all"
+		end
 	end
 	
 	selector = selector or luup.variable_get(SID, "LightId", luup.device) or ""
@@ -398,7 +401,7 @@ function startParent(lul_device)
     --run the updater
 	if (STATS_RUNNING == false) then
 		STATS_RUNNING = true
-		luup.call_delay("updateStats",1)
+		luup.call_delay("updateStats",5)
 	else
 		log("Stats already started!")
 	end	
