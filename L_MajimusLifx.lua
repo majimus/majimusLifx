@@ -297,7 +297,7 @@ function updateStats()
 	DEBUG = dlevel	
 	
 	--set status update times
-	local update = luup.variable_get(SID, "DELAY", luup.device) or "60"
+	local update = luup.variable_get(SID, "DELAY", luup.device) or "120"
 	update = tonumber(update)
 	DELAY = update
 	
@@ -467,10 +467,10 @@ function bootStrap(lul_device)
 		end
 		
 		--set status update times
-		local update = luup.variable_get(SID, "DELAY", lul_device) or "180"
+		local update = luup.variable_get(SID, "DELAY", lul_device) or "120"
 		update = tonumber(update)
 		DELAY = update
-		if(update == 180) then
+		if(update == 120) then
 			luup.variable_set(SID, "DELAY", update,lul_device)
 		end
 		
