@@ -165,7 +165,11 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 		return
 	end
 	
-	local jsondata = json.parse(resp[1])  --resp is a table where resp[1] is string containing json
+	resp_str = table.concat(resp)
+	
+	log("response "..resp_str,3)
+	
+	local jsondata = json.parse(resp_str)  
 	
 	--for the list command we return multidata
 	if(mode == "list") then
