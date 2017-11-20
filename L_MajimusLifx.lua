@@ -181,8 +181,9 @@ local function lifx_ctrl(selector, mode, color, bright, cycles, period)
 		jsondata = jsondata[1]
 	end
 	
+	log("jsondata dump",3)
 	for key, value in pairs(jsondata) do
-		--print(key, value)
+		log("key:"..key.." value:"..value,3)
 		if key == "power" then
 			power = value
 		elseif key == "connected" then
@@ -213,7 +214,8 @@ end
 
 function turnOn(lul_device)
 	log("TurnOn")
-	local sel = luup.variable_get(SID, "LightId", lul_device)	
+	local sel = luup.variable_get(SID, "LightId", lul_device)
+    local isGroup = (string.sub(sel,1,5) == "group")	
 	--handle the scene
 	if(luup.devices[lul_device].device_type == SDID) then
 		log("Play Scene")
@@ -224,9 +226,11 @@ function turnOn(lul_device)
 	--lifx_ctrl(selector, mode, color, bright, cycles, period)
 	local stat = lifx_ctrl(sel, "on", nil, nil, nil, nil)	
 	-- do not update if we returned
-	if(stat == false) then
+	if(stat == false and isGroup == false) then
+		log("false stat",2)
 		return
 	end
+	log("true stat",2)
 	luup.variable_set(SWITCH_SID,"Status", 1, lul_device)
 	--get Target Level
 	loadLevel = getLoadLevel(lul_device)
@@ -237,13 +241,16 @@ function turnOff(lul_device)
 	log("TurnOff")	
 	if (luup.devices[lul_device].device_type == BDID) then
 		log("Turn off light")
-		local sel = luup.variable_get(SID, "LightId", lul_device)	
+		local sel = luup.variable_get(SID, "LightId", lul_device)
+		local isGroup = (string.sub(sel,1,5) == "group")
 		--lifx_ctrl(selector, mode, color, bright, cycles, period)
 		local stat = lifx_ctrl(sel, 'off', nil, nil, nil, nil)
 		-- do not update if we returned
-		if(stat == false) then
+		if(stat == false and isGroup == false) then
+			log("false stat",2)
 			return
 		end
+		log("true stat",2)
 	elseif (luup.devices[lul_device].device_type == SDID) then
 		log("Turn off a scene, nothing to do")
 	end	
@@ -254,6 +261,7 @@ end
 function setLoadLevelTarget(target,lul_device)
 	log("SetLoadLevel:" .. target)
 	local sel = luup.variable_get(SID, "LightId", lul_device)
+	local isGroup = (string.sub(sel,1,5) == "group")
 	--set target to range 0.0 - 1.0
 	target_scaled = (target / 100.0) * 1.0	
 	
@@ -264,11 +272,13 @@ function setLoadLevelTarget(target,lul_device)
 		stat = lifx_ctrl(sel, 'brightness', nil, target_scaled, nil, nil)
 		
 		-- do not update if we returned
-		if(stat == false) then
+		if(stat == false and isGroup == false) then
+			log("false stat",2)
 			return
 		end
-		luup.variable_set(DIMMER_SID, "LoadLevelTarget", target, lul_device)
-	
+		
+		log("true stat",2)
+		luup.variable_set(DIMMER_SID, "LoadLevelTarget", target, lul_device)	
 		-- Turn on lights now, will come on at set target	
 		turnOn(lul_device)
 	else
@@ -330,14 +340,30 @@ function updateStats()
 			elseif key == "id" then
 				id = "id:"..value
 				cstat = cstat + 1
+			elseif key == "group" then
+			    cstat = cstat + 1
+				gid = "group_id:"..value["id"]				
 			elseif key == "error" then
 				err = value
 			end			
-			if(cstat == 3) then
+			if(cstat == 4) then
 				cstat = 0;
 				brightness_tab[id] = bright
 				power_tab[id] = power
-				log("Lifx Saving "..id..":"..power..":"..bright,2)
+				if power == "on" then
+					log("Setting group data",2)
+					if(power_tab[gid] == nil) then
+						log("Initial group data bright:"..bright,3)
+						power_tab[gid] = power
+						brightness_tab[gid] = tonumber(bright)
+					else
+						log("aggregate group data bright:"..bright,3)
+						temp_bright = brightness_tab[gid] + tonumber(bright)
+						temp_bright = temp_bright/2
+						brightness_tab[gid] = temp_bright
+					end
+				end	
+				log("Lifx Saving "..id..":"..power..":"..bright,2)				
 			end			
 		end
 	end
@@ -362,8 +388,8 @@ function updateStats()
 			else
 				luup.variable_set(SWITCH_SID, "Status", 0, k)
 				luup.variable_set(DIMMER_SID,"LoadLevelStatus", 0, k)
-				luup.variable_set(DIMMER_SID,"LoadLevelTarget", loadLevel, k)
 			end
+			luup.variable_set(DIMMER_SID,"LoadLevelTarget", loadLevel, k)
 		end
 	end
 	--call it again after a while
