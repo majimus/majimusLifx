@@ -24,7 +24,7 @@ More functionality and refinement will be added with time.
 module("L_MajimusLifx", package.seeall)
 
 -- Module Version
-PLUGIN_VERSION = '0.4'
+PLUGIN_VERSION = '0.5'
 
 https = require("ssl.https")
 ltn12 = require("ltn12")
@@ -325,76 +325,80 @@ function updateStats()
 	brightness_tab = {}
 	power_tab = {}
 	
-	for status_key, status_value in pairs(status_data) do
-	    cstat = 0
-		for key, value in pairs(status_value) do
-			if type(value) == "string" or type(value) == "number" then 
-				log("Lifx Key:"..key.." Value:"..value,2)
+	if(status_data ~= nil) then
+		for status_key, status_value in pairs(status_data) do
+			cstat = 0
+			for key, value in pairs(status_value) do
+				if type(value) == "string" or type(value) == "number" then 
+					log("Lifx Key:"..key.." Value:"..value,2)
+				end
+				if key == "power" then
+					power = value
+					cstat = cstat + 1
+				elseif key == "connected" then
+					connected = value
+				elseif key == "status" then
+					stat = value
+				elseif key == "brightness" then
+					bright = value
+					cstat = cstat + 1
+				elseif key == "id" then
+					id = "id:"..value
+					cstat = cstat + 1
+				elseif key == "group" then
+					cstat = cstat + 1
+					gid = "group_id:"..value["id"]				
+				elseif key == "error" then
+					err = value
+				end			
+				if(cstat == 4) then
+					cstat = 0;
+					brightness_tab[id] = bright
+					power_tab[id] = power
+					if power == "on" then
+						log("Setting group data",2)
+						if(power_tab[gid] == nil) then
+							log("Initial group data bright:"..bright,3)
+							power_tab[gid] = power
+							brightness_tab[gid] = tonumber(bright)
+						else
+							log("aggregate group data bright:"..bright,3)
+							temp_bright = brightness_tab[gid] + tonumber(bright)
+							temp_bright = temp_bright/2
+							brightness_tab[gid] = temp_bright
+						end
+					end	
+					log("Lifx Saving "..id..":"..power..":"..bright,2)				
+				end			
 			end
-			if key == "power" then
-				power = value
-				cstat = cstat + 1
-			elseif key == "connected" then
-				connected = value
-			elseif key == "status" then
-				stat = value
-			elseif key == "brightness" then
-				bright = value
-				cstat = cstat + 1
-			elseif key == "id" then
-				id = "id:"..value
-				cstat = cstat + 1
-			elseif key == "group" then
-			    cstat = cstat + 1
-				gid = "group_id:"..value["id"]				
-			elseif key == "error" then
-				err = value
-			end			
-			if(cstat == 4) then
-				cstat = 0;
-				brightness_tab[id] = bright
-				power_tab[id] = power
-				if power == "on" then
-					log("Setting group data",2)
-					if(power_tab[gid] == nil) then
-						log("Initial group data bright:"..bright,3)
-						power_tab[gid] = power
-						brightness_tab[gid] = tonumber(bright)
-					else
-						log("aggregate group data bright:"..bright,3)
-						temp_bright = brightness_tab[gid] + tonumber(bright)
-						temp_bright = temp_bright/2
-						brightness_tab[gid] = temp_bright
-					end
-				end	
-				log("Lifx Saving "..id..":"..power..":"..bright,2)				
-			end			
 		end
-	end
-	
-	for k, v in pairs(luup.devices) do
-		if (v and v.device_type == BDID) then
-			log("UpdateStats Dev#:"..k,1)
-			id=luup.variable_get(SID, "LightId", k)			
-			bright = brightness_tab[id]
-			power  = power_tab[id]			
-			if(bright == nil or power == nil) then
-				log("Stats Failure")
-				bright = 0
-				power = "Failure"
-			end			
-			log('Power:'..power..' Bright:'..bright,2)
-			loadLevel = tonumber(bright)
-			loadLevel = loadLevel * 100
-			if (power == "on") then
-				luup.variable_set(SWITCH_SID, "Status", 1, k)
-				luup.variable_set(DIMMER_SID,"LoadLevelStatus", loadLevel, k)
-			else
-				luup.variable_set(SWITCH_SID, "Status", 0, k)
-				luup.variable_set(DIMMER_SID,"LoadLevelStatus", 0, k)
+		
+		for k, v in pairs(luup.devices) do
+			if (v and v.device_type == BDID) then
+				log("UpdateStats Dev#:"..k,1)
+				id=luup.variable_get(SID, "LightId", k)			
+				bright = brightness_tab[id]
+				power  = power_tab[id]			
+				if(bright == nil or power == nil) then
+					log("Stats Failure")
+					bright = 0
+					power = "Failure"
+				end			
+				log('Power:'..power..' Bright:'..bright,2)
+				loadLevel = tonumber(bright)
+				loadLevel = loadLevel * 100
+				if (power == "on") then
+					luup.variable_set(SWITCH_SID, "Status", 1, k)
+					luup.variable_set(DIMMER_SID,"LoadLevelStatus", loadLevel, k)
+				else
+					luup.variable_set(SWITCH_SID, "Status", 0, k)
+					luup.variable_set(DIMMER_SID,"LoadLevelStatus", 0, k)
+				end
+				luup.variable_set(DIMMER_SID,"LoadLevelTarget", loadLevel, k)
 			end
-			luup.variable_set(DIMMER_SID,"LoadLevelTarget", loadLevel, k)
 		end
+	else
+		log("Null stats data",1)
 	end
 	--call it again after a while
 	math.randomseed(os.time())
